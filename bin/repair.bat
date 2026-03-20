@@ -5,7 +5,12 @@ title Outil de reparation Windows
 :: CONFIG
 :: ================================
 set VERSION=1.0.0
-set LOG_DIR=%~dp0logs
+
+:: Récupérer le dossier racine (celui du VBS)
+set ROOT_DIR=%~dp0..\
+
+:: Dossier logs à la racine
+set LOG_DIR=%ROOT_DIR%logs
 
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 
