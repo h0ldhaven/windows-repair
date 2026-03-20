@@ -75,17 +75,29 @@ set SFC_CODE=%errorlevel%
 
 echo [SFC] >> "%LOG_FILE%"
 
-if %SFC_CODE% equ 0 (
-    echo RESULTAT: OK (aucune erreur) >> "%LOG_FILE%"
-) else if %SFC_CODE% equ 1 (
-    echo RESULTAT: OK (reparations effectuees) >> "%LOG_FILE%"
-) else if %SFC_CODE% equ 2 (
-    echo RESULTAT: ECHEC (reparations impossibles) >> "%LOG_FILE%"
-) else (
-    echo RESULTAT: INCONNU >> "%LOG_FILE%"
-    echo CODE: %SFC_CODE% >> "%LOG_FILE%"
-)
+if %SFC_CODE% equ 0 goto SFC_OK
+if %SFC_CODE% equ 1 goto SFC_REPAIRED
+if %SFC_CODE% equ 2 goto SFC_FAILED
 
+goto SFC_UNKNOWN
+
+:SFC_OK
+echo RESULTAT: OK (aucune erreur) >> "%LOG_FILE%"
+goto SFC_END
+
+:SFC_REPAIRED
+echo RESULTAT: OK (reparations effectuees) >> "%LOG_FILE%"
+goto SFC_END
+
+:SFC_FAILED
+echo RESULTAT: ECHEC (reparations impossibles) >> "%LOG_FILE%"
+goto SFC_END
+
+:SFC_UNKNOWN
+echo RESULTAT: INCONNU >> "%LOG_FILE%"
+echo CODE: %SFC_CODE% >> "%LOG_FILE%"
+
+:SFC_END
 echo. >> "%LOG_FILE%"
 
 :: ================================
