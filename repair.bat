@@ -7,33 +7,24 @@ title Outil de reparation Windows
 set VERSION=1.0.0
 set LOG_DIR=%~dp0logs
 
-:: Création dossier logs si inexistant
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 
-:: Format date/heure safe (important)
-for /f "tokens=1-4 delims=/ " %%a in ("%date%") do (
-    set DAY=%%a
-    set MONTH=%%b
-    set YEAR=%%c
-)
+set DATETIME=%date:~-4%-%date:~3,2%-%date:~0,2%_%time:~0,2%-%time:~3,2%-%time:~6,2%
+set DATETIME=%DATETIME: =0%
 
-for /f "tokens=1-3 delims=:." %%a in ("%time%") do (
-    set HOUR=%%a
-    set MIN=%%b
-    set SEC=%%c
-)
-
-set LOG_FILE=%LOG_DIR%\repair_%YEAR%-%MONTH%-%DAY%_%HOUR%-%MIN%-%SEC%.log
+set LOG_FILE=%LOG_DIR%\repair_%DATETIME%.log
 
 :: ================================
-:: HEADER LOG
+:: HEADER
 :: ================================
-echo ============================================== > "%LOG_FILE%"
-echo   OUTIL DE REPARATION WINDOWS >> "%LOG_FILE%"
-echo   Version: %VERSION% >> "%LOG_FILE%"
-echo   Date: %date% %time% >> "%LOG_FILE%"
-echo ============================================== >> "%LOG_FILE%"
-echo. >> "%LOG_FILE%"
+(
+echo ==============================================
+echo OUTIL DE REPARATION WINDOWS
+echo Version: %VERSION%
+echo Date: %date% %time%
+echo ==============================================
+echo.
+) > "%LOG_FILE%"
 
 :: ================================
 :: UI
@@ -43,9 +34,6 @@ echo ==================================================
 echo        OUTIL DE REPARATION WINDOWS
 echo        Version %VERSION%
 echo ==================================================
-echo.
-echo Un log sera genere ici :
-echo %LOG_FILE%
 echo.
 echo Merci de ne PAS fermer cette fenetre.
 echo.
@@ -57,19 +45,22 @@ cls
 :: ETAPE 1 - DISM
 :: ================================
 echo [ETAPE 1/2] DISM en cours...
-echo [ETAPE 1] DISM START >> "%LOG_FILE%"
 
-DISM /Online /Cleanup-Image /RestoreHealth >> "%LOG_FILE%" 2>&1
+DISM /Online /Cleanup-Image /RestoreHealth
 
-if %errorlevel% neq 0 (
-    echo [ERREUR] DISM code: %errorlevel%
-    echo [ERREUR] DISM code: %errorlevel% >> "%LOG_FILE%"
+set DISM_CODE=%errorlevel%
+
+echo [DISM] >> "%LOG_FILE%"
+
+if %DISM_CODE% equ 0 (
+    echo RESULTAT: OK >> "%LOG_FILE%"
 ) else (
-    echo [OK] DISM termine
-    echo [OK] DISM termine >> "%LOG_FILE%"
+    echo RESULTAT: ECHEC >> "%LOG_FILE%"
+    echo CODE: %DISM_CODE% >> "%LOG_FILE%"
 )
 
 echo. >> "%LOG_FILE%"
+
 pause
 cls
 
@@ -77,16 +68,22 @@ cls
 :: ETAPE 2 - SFC
 :: ================================
 echo [ETAPE 2/2] SFC en cours...
-echo [ETAPE 2] SFC START >> "%LOG_FILE%"
 
-sfc /scannow >> "%LOG_FILE%" 2>&1
+sfc /scannow
 
-if %errorlevel% neq 0 (
-    echo [ATTENTION] SFC code: %errorlevel%
-    echo [ATTENTION] SFC code: %errorlevel% >> "%LOG_FILE%"
+set SFC_CODE=%errorlevel%
+
+echo [SFC] >> "%LOG_FILE%"
+
+if %SFC_CODE% equ 0 (
+    echo RESULTAT: OK (aucune erreur) >> "%LOG_FILE%"
+) else if %SFC_CODE% equ 1 (
+    echo RESULTAT: OK (reparations effectuees) >> "%LOG_FILE%"
+) else if %SFC_CODE% equ 2 (
+    echo RESULTAT: ECHEC (reparations impossibles) >> "%LOG_FILE%"
 ) else (
-    echo [OK] SFC termine
-    echo [OK] SFC termine >> "%LOG_FILE%"
+    echo RESULTAT: INCONNU >> "%LOG_FILE%"
+    echo CODE: %SFC_CODE% >> "%LOG_FILE%"
 )
 
 echo. >> "%LOG_FILE%"
@@ -94,9 +91,11 @@ echo. >> "%LOG_FILE%"
 :: ================================
 :: FIN
 :: ================================
-echo ============================================== >> "%LOG_FILE%"
-echo   FIN EXECUTION >> "%LOG_FILE%"
-echo ============================================== >> "%LOG_FILE%"
+(
+echo ==============================================
+echo FIN EXECUTION
+echo ==============================================
+) >> "%LOG_FILE%"
 
 echo.
 echo ==================================================
@@ -105,8 +104,6 @@ echo ==================================================
 echo.
 echo Log disponible ici :
 echo %LOG_FILE%
-echo.
-echo Pensez a redemarrer votre PC.
 echo.
 
 pause
