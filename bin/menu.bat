@@ -1,6 +1,9 @@
 @echo off
 cd /d "%~dp0"
 
+:: Forcer console en UTF-8
+chcp 65001 >nul
+
 title Repair Tool by h0ldhaven
 color 0A
 
