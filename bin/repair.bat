@@ -135,6 +135,7 @@ del "%TEMP_LOG%" >nul 2>&1
 echo.
 echo  =============================================================
 echo  PROCESSUS DE MAINTENANCE TERMINÉ.
+echo  UN REDEMARRAGE DU SYSTEME EST RECOMMANDÉ.
 echo  Rapport d'intervention : %LOG_FILE%
 echo  =============================================================
 
