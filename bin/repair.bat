@@ -26,8 +26,6 @@ echo Date: %date% %time% >> "%LOG_FILE%"
 echo ================================== >> "%LOG_FILE%"
 :: ------------------------------------
 
-echo [1/2] DISM : Analyse et Réparation de l'image...
-
 :: --- VÉRIFICATION CONNEXION ---
 echo.
 ping -n 1 8.8.8.8 >nul
@@ -43,15 +41,23 @@ if %errorlevel% neq 0 (
 powershell -NoProfile -Command "'Status Réseau : %NET_STAT%', '' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append"
 :: ------------------------------------
 
+
+:: --- ÉTAPE 1 : RESTOREHEALTH ---
+echo.
+echo  [1/3] RESTAURATION : Réparation du magasin de composants (Payloads)...
+echo  [i]   NOTE         : Téléchargement et remplacement des fichiers sources corrompus.
 if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 
 :: Lancement DISM (Redirection standard)
 start /b cmd /c "dism /online /cleanup-image /restorehealth > "%TEMP_LOG%" 2>&1"
 :: ------------------------------------
 
-:loop_dism
+:loop_restorehealth
 cls
-echo [1/2] DISM : Analyse et Réparation de l'image...
+echo.
+echo  [1/3] RESTAURATION : Réparation du magasin de composants (Payloads)...
+echo.
+echo  [i]   NOTE         : Téléchargement et remplacement des fichiers sources corrompus.
 echo.
 if exist "%TEMP_LOG%" (
     :: On nettoie tout sauf les caractères 10 (Line Feed) et 13 (Carriage Return)
@@ -59,47 +65,83 @@ if exist "%TEMP_LOG%" (
 )
 timeout /t 3 >nul
 tasklist | find /i "dism.exe" >nul
-if %errorlevel% equ 0 goto loop_dism
+if %errorlevel% equ 0 goto loop_restorehealth
 
 :: Sauvegarde DISM (ANSI vers UTF8)
 powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){ $t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append }"
 :: ------------------------------------
 
-:: ================================
-:: [2/2] SFC
-:: ================================
+:: --- ÉTAPE 2 : SFC SCANNOW ---
 echo.
-echo [2/2] SFC en cours...
+echo  [2/3] DÉPLOYEMENT  : Remplacement des fichiers système actifs...
+echo.
+echo  [i]   NOTE         : Application des correctifs sur les DLL et EXE du noyau Windows.
 if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 
 start /b cmd /c "sfc /scannow > "%TEMP_LOG%" 2>&1"
 
 :loop_sfc
 cls
-echo [1/2] DISM Termine.
-echo [2/2] SFC en cours...
+echo.
+echo  [1/3] RESTAURATION : Terminé.
+echo  [2/3] DÉPLOYEMENT  : Remplacement des fichiers système actifs...
+echo.
+echo  [i]   NOTE         : Application des correctifs sur les DLL et EXE du noyau Windows.
 echo.
 if exist "%TEMP_LOG%" (
-    powershell -Command "$content = Get-Content -Path '%TEMP_LOG%' -Encoding Unicode -ErrorAction SilentlyContinue; if ($content) { $content | ForEach-Object { $c = $_ -replace '[\x00-\x1F]', ''; if ($c.Trim()) { Write-Host $c } } }"
+    powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){$t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-Host}"
 )
 timeout /t 3 >nul
 tasklist | find /i "sfc.exe" >nul
 if %errorlevel% equ 0 goto loop_sfc
 
-:: Finalisation : On copie le contenu propre dans le log final
-powershell -Command "Get-Content -Path '%TEMP_LOG%' -Encoding Unicode | ForEach-Object { $_ -replace '[\x00-\x1F]', '' } | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append"
-
-:: NETTOYAGE
-if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
+:: Sauvegarde SFC
+powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){ '--- RESULTAT SFC SCANNOW ---' | Out-File '%LOG_FILE%' -Encoding utf8 -Append; $t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append }"
 :: ------------------------------------
 
+:: --- ÉTAPE 3 : COMPONENT CLEANUP ---
 echo.
-echo REPARATION TERMINÉE. Log: %LOG_FILE%
+echo  [3/3] OPTIMISATION : Consolidation du magasin WinSxS (Cleanup)...
+echo.
+echo  [i]   NOTE         : Purge des packages obsolètes et réduction de l'empreinte disque.
+echo.
+if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 
-:: Fin du script
+start /b cmd /c "dism /online /cleanup-image /startcomponentcleanup > "%TEMP_LOG%" 2>&1"
+
+:loop_startcomponentcleanup
+cls
+echo.
+echo  [1/3] RESTAURATION         : Terminé.
+echo  [2/3] DÉPLOYEMENT          : Terminé.
+echo  [3/3] OPTIMISATION         : Indexation et purge du magasin WinSxS...
+echo.
+echo  [i]   NOTE                 : Réduction de l'empreinte disque par élimination des deltas
+echo                               de mise à jour obsolètes (Superseded Packages).
+echo.
+if exist "%TEMP_LOG%" (
+    powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){$t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-Host}"
+)
+timeout /t 3 >nul
+tasklist | find /i "dism.exe" >nul
+if %errorlevel% equ 0 goto loop_startcomponentcleanup
+
+:: Sauvegarde Cleanup
+powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){ '--- RESULTAT CLEANUP FINAL ---' | Out-File '%LOG_FILE%' -Encoding utf8 -Append; $t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append }"
+
+:: Nettoyage final
+del "%TEMP_LOG%" >nul 2>&1
+
+echo.
+echo  =============================================================
+echo  PROCESSUS DE MAINTENANCE TERMINÉ.
+echo  Rapport d'intervention : %LOG_FILE%
+echo  =============================================================
+
+:: Gestion workflow
 if "%1"=="--nested" exit /b
 
 echo.
-echo Opération terminée. Appuyez sur une touche pour revenir au menu.
+echo Appuyez sur une touche pour revenir au menu principal.
 pause >nul
 exit /b
