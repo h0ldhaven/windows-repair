@@ -1,51 +1,58 @@
 @echo off
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
+
+:: 1. On force la console en UTF-8 pour le Batch
+chcp 65001 >nul
 
 :: Dossier racine et logs
 for %%I in ("%~dp0..") do set ROOT_DIR=%%~fI\
 set LOG_DIR=%ROOT_DIR%logs
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 
-:: Timestamp et log
+:: Timestamp et fichiers
 set DATETIME=%date:~-4%-%date:~3,2%-%date:~0,2%_%time:~0,2%-%time:~3,2%-%time:~6,2%
 set DATETIME=%DATETIME: =0%
 set LOG_FILE=%LOG_DIR%\analyze_%DATETIME%.log
+set TEMP_LOG=%TEMP%\sfc_temp.txt
 
-:: Header log minimal
+:: Header log
 (
 echo ==================================
 echo ANALYSE SYSTEME
 echo Date: %date% %time%
 echo ==================================
+echo.
+echo ===== DETAILS DE LA PROCEDURE =====
 ) > "%LOG_FILE%"
 
-:: UI
-echo Analyse systeme en cours...
+echo Analyse systeme en cours... (SFC /VERIFYONLY)
+echo.2
+
+:: ==== L'ASTUCE : REDIRECTION VERS FICHIER PUIS LECTURE LIVE ====
+:: On lance SFC et on envoie sa sortie dans un fichier temporaire
+:: Le ">" préserve mieux l'encodage que le "|"
+start /b cmd /c "sfc /verifyonly > "%TEMP_LOG%" 2>&1"
+
+:: Boucle de lecture "Live" du fichier temporaire
+:loop
+cls
+echo Analyse systeme en cours... (SFC /VERIFYONLY)
 echo.
-
-:: 1️⃣ Lancer SFC directement pour progression live
-sfc /verifyonly
-
-:: 2️⃣ Après fin SFC, log minimal selon code retour
-set SFC_CODE=%errorlevel%
-echo. >> "%LOG_FILE%"
-echo ===== RESULTAT ANALYSE ===== >> "%LOG_FILE%"
-
-if %SFC_CODE%==0 (
-    echo Aucune corruption detectee >> "%LOG_FILE%"
-    echo Aucune corruption detectee
-) else (
-    echo Corruption detectee ou action requise >> "%LOG_FILE%"
-    echo Corruption detectee ou action requise
+if exist "%TEMP_LOG%" (
+    :: On utilise PowerShell juste pour LIRE le fichier et le convertir proprement
+    powershell -Command "$content = Get-Content -Path '%TEMP_LOG%' -Encoding Unicode -ErrorAction SilentlyContinue; if ($content) { $content | ForEach-Object { $c = $_ -replace '[\x00-\x1F]', ''; if ($c.Trim()) { Write-Host $c } } }"
 )
+timeout /t 2 >nul
+tasklist | find /i "sfc.exe" >nul
+if %errorlevel% equ 0 goto loop
 
-:: 3️⃣ Indiquer où trouver le log complet CBS si besoin
-echo. >> "%LOG_FILE%"
-echo Pour details, consulter le CBS log : %windir%\Logs\CBS\CBS.log >> "%LOG_FILE%"
+:: Finalisation : On copie le contenu propre dans le log final
+powershell -Command "Get-Content -Path '%TEMP_LOG%' -Encoding Unicode | ForEach-Object { $_ -replace '[\x00-\x1F]', '' } | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append"
+del "%TEMP_LOG%" >nul 2>&1
 
 echo.
-echo Analyse terminee
-echo Log genere :
-echo %LOG_FILE%
-echo.
+echo ----------------------------------
+echo Analyse terminee.
+echo Log genere : "%LOG_FILE%"
 pause
