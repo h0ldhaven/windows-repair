@@ -20,7 +20,7 @@ set TEMP_LOG=%TEMP%\repair_temp.txt
 :: ------------------------------------
 
 :: Header log (On le fait en Batch simple pour éviter tout conflit)
-echo ================================== > "%LOG_FILE%"
+echo ================================== >> "%LOG_FILE%"
 echo REPARATION SYSTEME >> "%LOG_FILE%"
 echo Date: %date% %time% >> "%LOG_FILE%"
 echo ================================== >> "%LOG_FILE%"
@@ -88,13 +88,18 @@ if %errorlevel% equ 0 goto loop_sfc
 
 :: Finalisation : On copie le contenu propre dans le log final
 powershell -Command "Get-Content -Path '%TEMP_LOG%' -Encoding Unicode | ForEach-Object { $_ -replace '[\x00-\x1F]', '' } | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append"
-:: ------------------------------------
 
-:: On sauvegarde le résultat final
-type "%TEMP_LOG%" >> "%LOG_FILE%"
-del "%TEMP_LOG%" >nul 2>&1
+:: NETTOYAGE
+if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 :: ------------------------------------
 
 echo.
-echo REPARATION TERMINEE. Log: %LOG_FILE%
-pause
+echo REPARATION TERMINÉE. Log: %LOG_FILE%
+
+:: Fin du script
+if "%1"=="--nested" exit /b
+
+echo.
+echo Opération terminée. Appuyez sur une touche pour revenir au menu.
+pause >nul
+exit /b
