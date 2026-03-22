@@ -1,126 +1,93 @@
 @echo off
-title Outil de reparation Windows
+cd /d "%~dp0"
 
 :: ================================
-:: CONFIG
+:: Dossier racine et logs
 :: ================================
-set VERSION=1.0.0
-
-:: Récupérer le dossier racine (celui du VBS)
-set ROOT_DIR=%~dp0..\
-
-:: Dossier logs à la racine
+for %%I in ("%~dp0..") do set ROOT_DIR=%%~fI\
 set LOG_DIR=%ROOT_DIR%logs
-
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 
+:: Timestamp pour le log
 set DATETIME=%date:~-4%-%date:~3,2%-%date:~0,2%_%time:~0,2%-%time:~3,2%-%time:~6,2%
 set DATETIME=%DATETIME: =0%
-
 set LOG_FILE=%LOG_DIR%\repair_%DATETIME%.log
 
 :: ================================
-:: HEADER
+:: Header log
 :: ================================
 (
-echo ==============================================
-echo OUTIL DE REPARATION WINDOWS
-echo Version: %VERSION%
+echo ==================================
+echo REPARATION SYSTEME
 echo Date: %date% %time%
-echo ==============================================
-echo.
+echo ==================================
 ) > "%LOG_FILE%"
 
 :: ================================
 :: UI
 :: ================================
-color 0A
-echo ==================================================
-echo        OUTIL DE REPARATION WINDOWS
-echo        Version %VERSION%
-echo ==================================================
-echo.
-echo Merci de ne PAS fermer cette fenetre.
+echo ============================================================
+echo                  REPARATION SYSTEME
+echo ============================================================
 echo.
 
-pause
-cls
-
 :: ================================
-:: ETAPE 1 - DISM
+:: DISM
 :: ================================
-echo [ETAPE 1/2] DISM en cours...
+echo [1/2] DISM en cours...
+echo.
 
-DISM /Online /Cleanup-Image /RestoreHealth
+set /a MAX_WAIT=300
+set /a ELAPSED=0
 
-set DISM_CODE=%errorlevel%
+:: Lance DISM dans une fenêtre de fond
+start "" /b cmd /c "DISM /Online /Cleanup-Image /RestoreHealth"
 
-echo [DISM] >> "%LOG_FILE%"
+:WAIT_DISM
+:: Vérifie si un processus DISM est encore actif
+tasklist /fi "imagename eq dism.exe" | find /i "dism.exe" >nul
+if errorlevel 1 goto DISM_DONE
 
-if %DISM_CODE% equ 0 (
-    echo RESULTAT: OK >> "%LOG_FILE%"
-) else (
-    echo RESULTAT: ECHEC >> "%LOG_FILE%"
-    echo CODE: %DISM_CODE% >> "%LOG_FILE%"
+:: Attendre 5 secondes et incrémenter le timer
+timeout /t 5 /nobreak >nul
+set /a ELAPSED+=5
+if %ELAPSED% GEQ %MAX_WAIT% (
+    echo DISM a depasse 5 minutes, on skip >> "%LOG_FILE%"
+    echo DISM a depasse 5 minutes, on skip
+    taskkill /im dism.exe /f >nul 2>&1
+    goto DISM_DONE
 )
+goto WAIT_DISM
 
-echo. >> "%LOG_FILE%"
-
-pause
-cls
+:DISM_DONE
+echo DISM termine >> "%LOG_FILE%"
+echo DISM termine
 
 :: ================================
-:: ETAPE 2 - SFC
+:: SFC
 :: ================================
-echo [ETAPE 2/2] SFC en cours...
+echo.
+echo [2/2] SFC en cours...
+echo.
 
 sfc /scannow
-
-set SFC_CODE=%errorlevel%
-
-echo [SFC] >> "%LOG_FILE%"
-
-if %SFC_CODE% equ 0 goto SFC_OK
-if %SFC_CODE% equ 1 goto SFC_REPAIRED
-if %SFC_CODE% equ 2 goto SFC_FAILED
-
-goto SFC_UNKNOWN
-
-:SFC_OK
-echo RESULTAT: OK (aucune erreur) >> "%LOG_FILE%"
-goto SFC_END
-
-:SFC_REPAIRED
-echo RESULTAT: OK (reparations effectuees) >> "%LOG_FILE%"
-goto SFC_END
-
-:SFC_FAILED
-echo RESULTAT: ECHEC (reparations impossibles) >> "%LOG_FILE%"
-goto SFC_END
-
-:SFC_UNKNOWN
-echo RESULTAT: INCONNU >> "%LOG_FILE%"
-echo CODE: %SFC_CODE% >> "%LOG_FILE%"
-
-:SFC_END
-echo. >> "%LOG_FILE%"
+set SFC_CODE=%ERRORLEVEL%
+if %SFC_CODE%==0 (
+    echo SFC: OK >> "%LOG_FILE%"
+    echo SFC termine: OK
+) else (
+    echo SFC: ERREUR >> "%LOG_FILE%"
+    echo SFC a rencontre un probleme
+)
 
 :: ================================
 :: FIN
 :: ================================
-(
-echo ==============================================
-echo FIN EXECUTION
-echo ==============================================
-) >> "%LOG_FILE%"
-
 echo.
-echo ==================================================
-echo                TERMINE
-echo ==================================================
-echo.
-echo Log disponible ici :
-echo %LOG_FILE%
+echo ============================================================
+echo                   REPARATION TERMINEE
+echo ============================================================
+echo Log: %LOG_FILE%
 echo.
 
 pause
