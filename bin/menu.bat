@@ -11,15 +11,17 @@ color 0A
 :MENU
 cls
 echo.
-echo ===============================================
+echo  ===============================================
 echo        WINDOWS 10 / 11 - REPAIR TOOL
-echo ===============================================
+echo  ===============================================
 echo   Auteur : h0ldhaven ^| Statut : Administrateur
 echo  ===============================================
 echo.
+echo  Appuyez sur la touche correspondante pour lancer le programme :
+echo.
 echo  [1] - Analyse système uniquement
 echo  [2] - Réparation système uniquement
-echo  [3] - Analyse + Réparation du système
+echo  [3] - Analyse + Réparation du système (Recommandé)
 echo.
 echo  [L] - Ouvrir le dossier des Logs
 echo  [N] - Nettoyer les anciens rapports (+7 jours)
