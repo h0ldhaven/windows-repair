@@ -64,5 +64,12 @@ del "%TEMP_LOG%" >nul 2>&1
 echo.
 echo ----------------------------------
 echo Analyse terminee.
-echo Log genere : "%LOG_FILE%"
-pause
+echo Log généré : "%LOG_FILE%"
+
+:: Fin du script
+if "%1"=="--nested" exit /b
+
+echo.
+echo Opération terminée. Appuyez sur une touche pour revenir au menu.
+pause >nul
+exit /b
