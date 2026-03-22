@@ -17,7 +17,7 @@ jobs:
         shell: pwsh
         run: |
           # Correction : On vérifie les fichiers EXACTS de ton projet
-          $files = @("RepairLauncher.vbs", "bin/menu.bat", "bin/repair.bat", "bin/analyze.bat", "bin/all.bat")
+          $files = @("Windows-Tool.vbs", "bin/menu.bat", "bin/repair.bat", "bin/analyze.bat", "bin/all.bat")
           foreach ($f in $files) {
             if (-not (Test-Path $f)) { 
                 Write-Error "ERREUR : Fichier manquant dans le dépôt : $f"
@@ -33,7 +33,7 @@ jobs:
           New-Item -ItemType Directory -Path "RepairTool_Package"
           
           # 2. Copie du lanceur et du dossier bin
-          Copy-Item "RepairLauncher.vbs" -Destination "RepairTool_Package/"
+          Copy-Item "Windows-Tool.vbs" -Destination "RepairTool_Package/"
           Copy-Item -Path "bin" -Destination "RepairTool_Package/bin" -Recurse
           
           # 3. Suppression des fichiers temporaires de log s'ils existent (nettoyage avant zip)
