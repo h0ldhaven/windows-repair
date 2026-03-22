@@ -1,93 +1,76 @@
 @echo off
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-:: ================================
+:: 1. On force la console en UTF-8 pour le Batch
+chcp 65001 >nul
+
 :: Dossier racine et logs
-:: ================================
 for %%I in ("%~dp0..") do set ROOT_DIR=%%~fI\
 set LOG_DIR=%ROOT_DIR%logs
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 
-:: Timestamp pour le log
+:: Timestamp et fichiers
 set DATETIME=%date:~-4%-%date:~3,2%-%date:~0,2%_%time:~0,2%-%time:~3,2%-%time:~6,2%
 set DATETIME=%DATETIME: =0%
 set LOG_FILE=%LOG_DIR%\repair_%DATETIME%.log
+set TEMP_LOG=%TEMP%\repair_temp.txt
 
-:: ================================
-:: Header log
-:: ================================
-(
-echo ==================================
-echo REPARATION SYSTEME
-echo Date: %date% %time%
-echo ==================================
-) > "%LOG_FILE%"
+:: Header log (On le fait en Batch simple pour éviter tout conflit)
+echo ================================== > "%LOG_FILE%"
+echo REPARATION SYSTEME >> "%LOG_FILE%"
+echo Date: %date% %time% >> "%LOG_FILE%"
+echo ================================== >> "%LOG_FILE%"
 
-:: ================================
-:: UI
-:: ================================
-echo ============================================================
-echo                  REPARATION SYSTEME
-echo ============================================================
-echo.
+echo [1/2] DISM en cours...
+if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 
-:: ================================
-:: DISM
-:: ================================
+:: Lancement DISM (Redirection standard)
+start /b cmd /c "dism /online /cleanup-image /restorehealth > "%TEMP_LOG%" 2>&1"
+
+:loop_dism
+cls
 echo [1/2] DISM en cours...
 echo.
-
-set /a MAX_WAIT=300
-set /a ELAPSED=0
-
-:: Lance DISM dans une fenêtre de fond
-start "" /b cmd /c "DISM /Online /Cleanup-Image /RestoreHealth"
-
-:WAIT_DISM
-:: Vérifie si un processus DISM est encore actif
-tasklist /fi "imagename eq dism.exe" | find /i "dism.exe" >nul
-if errorlevel 1 goto DISM_DONE
-
-:: Attendre 5 secondes et incrémenter le timer
-timeout /t 5 /nobreak >nul
-set /a ELAPSED+=5
-if %ELAPSED% GEQ %MAX_WAIT% (
-    echo DISM a depasse 5 minutes, on skip >> "%LOG_FILE%"
-    echo DISM a depasse 5 minutes, on skip
-    taskkill /im dism.exe /f >nul 2>&1
-    goto DISM_DONE
+if exist "%TEMP_LOG%" (
+    :: On nettoie tout sauf les caractères 10 (Line Feed) et 13 (Carriage Return)
+    powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){$t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-Host}"
 )
-goto WAIT_DISM
+timeout /t 3 >nul
+tasklist | find /i "dism.exe" >nul
+if %errorlevel% equ 0 goto loop_dism
 
-:DISM_DONE
-echo DISM termine >> "%LOG_FILE%"
-echo DISM termine
+:: Sauvegarde DISM (ANSI vers UTF8)
+powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){ $t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append }"
 
 :: ================================
-:: SFC
+:: [2/2] SFC
 :: ================================
 echo.
 echo [2/2] SFC en cours...
-echo.
+if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 
-sfc /scannow
-set SFC_CODE=%ERRORLEVEL%
-if %SFC_CODE%==0 (
-    echo SFC: OK >> "%LOG_FILE%"
-    echo SFC termine: OK
-) else (
-    echo SFC: ERREUR >> "%LOG_FILE%"
-    echo SFC a rencontre un probleme
+start /b cmd /c "sfc /scannow > "%TEMP_LOG%" 2>&1"
+
+:loop_sfc
+cls
+echo [1/2] DISM Termine.
+echo [2/2] SFC en cours...
+echo.
+if exist "%TEMP_LOG%" (
+    powershell -Command "$content = Get-Content -Path '%TEMP_LOG%' -Encoding Unicode -ErrorAction SilentlyContinue; if ($content) { $content | ForEach-Object { $c = $_ -replace '[\x00-\x1F]', ''; if ($c.Trim()) { Write-Host $c } } }"
 )
+timeout /t 3 >nul
+tasklist | find /i "sfc.exe" >nul
+if %errorlevel% equ 0 goto loop_sfc
 
-:: ================================
-:: FIN
-:: ================================
-echo.
-echo ============================================================
-echo                   REPARATION TERMINEE
-echo ============================================================
-echo Log: %LOG_FILE%
-echo.
+:: Finalisation : On copie le contenu propre dans le log final
+powershell -Command "Get-Content -Path '%TEMP_LOG%' -Encoding Unicode | ForEach-Object { $_ -replace '[\x00-\x1F]', '' } | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append"
 
+:: On sauvegarde le résultat final
+type "%TEMP_LOG%" >> "%LOG_FILE%"
+del "%TEMP_LOG%" >nul 2>&1
+
+echo.
+echo REPARATION TERMINEE. Log: %LOG_FILE%
 pause
