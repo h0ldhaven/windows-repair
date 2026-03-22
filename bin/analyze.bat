@@ -31,8 +31,57 @@ echo %NET_STAT%
 powershell -NoProfile -Command "'Info Réseau : %NET_STAT%', '' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append"
 :: ------------------------------------
 
+:: --- ÉTAPE 1 : DISM CHECKHEALTH ---
 echo.
-echo [1/1] SFC : Vérification de l'intégrité (Lecture seule)...
+echo  [1/3] DIAGNOSTIC EXPRESS : Vérification de l'état général...
+if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
+
+:: Lancement DISM
+start /b cmd /c "dism /online /cleanup-image /checkhealth > "%TEMP_LOG%" 2>&1"
+
+:loop_checkhealth
+cls
+echo  [1/3] DIAGNOSTIC EXPRESS : Vérification de l'état général...
+echo.
+if exist "%TEMP_LOG%" (
+    :: On nettoie tout sauf les caractères 10 (Line Feed) et 13 (Carriage Return)
+    powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){$t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-Host}"
+)
+timeout /t 3 >nul
+tasklist | find /i "dism.exe" >nul
+if %errorlevel% equ 0 goto loop_checkhealth
+
+:: Sauvegarde DISM (ANSI vers UTF8)
+powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){ $t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append }"
+:: ------------------------------------
+
+
+:: --- ÉTAPE 2 : DISM SCANHEALTH ---
+echo  [2/3] EXAMEN APPROFONDI : Recherche d'erreurs cachées (Patientez)...
+if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
+
+:: Lancement DISM
+start /b cmd /c "dism /online /cleanup-image /scanhealth > "%TEMP_LOG%" 2>&1"
+
+:loop_scanhealth
+cls
+echo  [1/3] DIAGNOSTIC EXPRESS : Terminé.
+echo  [2/3] EXAMEN APPROFONDI  : Recherche d'erreurs cachées (Patientez)...
+if exist "%TEMP_LOG%" (
+    powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){$t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-Host}"
+)
+timeout /t 3 >nul
+tasklist | find /i "dism.exe" >nul
+if %errorlevel% equ 0 goto loop_scanhealth
+
+:: Sauvegarde ScanHealth
+powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){ '--- RESULTAT DISM SCANHEALTH ---' | Out-File '%LOG_FILE%' -Encoding utf8 -Append; $t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append }"
+
+:: ------------------------------------
+
+:: --- ÉTAPE 3 : SFC VERIFYONLY ---
+echo.
+echo  [3/3] ANALYSE DES FICHIERS : Vérification de la structure Windows...
 if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 
 :: Lancement SFC en mode vérification seule (ne répare rien)
@@ -42,23 +91,22 @@ start /b cmd /c "sfc /verifyonly > "%TEMP_LOG%" 2>&1"
 :: ------------------------------------
 :loop_sfc
 cls
-echo.
-echo ============================================================
-echo           ANALYSE SYSTÈME EN COURS (VERIFY ONLY)
-echo ============================================================
-echo.
+echo  [1/3] DIAGNOSTIC EXPRESS   : Terminé.
+echo  [2/3] EXAMEN APPROFONDI    : Terminé.
+echo  [3/3] ANALYSE DES FICHIERS : Vérification de la structure Windows...
 echo.
 if exist "%TEMP_LOG%" (
-    powershell -Command "$content = Get-Content -Path '%TEMP_LOG%' -Encoding Unicode -ErrorAction SilentlyContinue; if ($content) { $content | ForEach-Object { $c = $_ -replace '[\x00-\x1F]', ''; if ($c.Trim()) { Write-Host $c } } }"
+    powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){$t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-Host}"
 )
 timeout /t 2 >nul
 tasklist | find /i "sfc.exe" >nul
 if %errorlevel% equ 0 goto loop_sfc
 :: ------------------------------------
 
-:: Finalisation : On copie le contenu propre dans le log final
-powershell -Command "Get-Content -Path '%TEMP_LOG%' -Encoding Unicode | ForEach-Object { $_ -replace '[\x00-\x1F]', '' } | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append"
+:: Sauvegarde des logs
+powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){ '--- RESULTAT SFC VERIFYONLY ---' | Out-File '%LOG_FILE%' -Encoding utf8 -Append; $t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-File -FilePath '%LOG_FILE%' -Encoding utf8 -Append }"
 :: ------------------------------------
+
 del "%TEMP_LOG%" >nul 2>&1
 
 echo.
