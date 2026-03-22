@@ -33,7 +33,7 @@ powershell -NoProfile -Command "'Info Réseau : %NET_STAT%', '' | Out-File -File
 
 :: --- ÉTAPE 1 : DISM CHECKHEALTH ---
 echo.
-echo  [1/3] DIAGNOSTIC EXPRESS : Vérification de l'état général...
+echo  [1/3] INITIALISATION : Vérification de l'intégrité rapide...
 if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 
 :: Lancement DISM
@@ -41,7 +41,10 @@ start /b cmd /c "dism /online /cleanup-image /checkhealth > "%TEMP_LOG%" 2>&1"
 
 :loop_checkhealth
 cls
-echo  [1/3] DIAGNOSTIC EXPRESS : Vérification de l'état général...
+echo.
+echo  [1/3] INITIALISATION : Vérification de l'intégrité rapide...
+echo.
+echo  [i]   NOTE           : Analyse immédiate de l'état logique du magasin de composants.
 echo.
 if exist "%TEMP_LOG%" (
     :: On nettoie tout sauf les caractères 10 (Line Feed) et 13 (Carriage Return)
@@ -57,7 +60,7 @@ powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG
 
 
 :: --- ÉTAPE 2 : DISM SCANHEALTH ---
-echo  [2/3] EXAMEN APPROFONDI : Recherche d'erreurs cachées (Patientez)...
+echo  [2/3] SCANNER : Analyse structurelle approfondie (Deep Scan)...
 if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 
 :: Lancement DISM
@@ -65,8 +68,11 @@ start /b cmd /c "dism /online /cleanup-image /scanhealth > "%TEMP_LOG%" 2>&1"
 
 :loop_scanhealth
 cls
-echo  [1/3] DIAGNOSTIC EXPRESS : Terminé.
-echo  [2/3] EXAMEN APPROFONDI  : Recherche d'erreurs cachées (Patientez)...
+echo.
+echo  [1/3] INITIALISATION : Terminé.
+echo  [2/3] SCANNER        : Analyse structurelle approfondie (Deep Scan)...
+echo.
+echo  [i]   NOTE           : Cette opération sollicite le processeur et le disque.
 if exist "%TEMP_LOG%" (
     powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::GetEncoding(850)); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){$t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-Host}"
 )
@@ -81,7 +87,7 @@ powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG
 
 :: --- ÉTAPE 3 : SFC VERIFYONLY ---
 echo.
-echo  [3/3] ANALYSE DES FICHIERS : Vérification de la structure Windows...
+echo  [3/3] AUDIT : Vérification de la signature des fichiers système...
 if exist "%TEMP_LOG%" del "%TEMP_LOG%" >nul 2>&1
 
 :: Lancement SFC en mode vérification seule (ne répare rien)
@@ -91,9 +97,12 @@ start /b cmd /c "sfc /verifyonly > "%TEMP_LOG%" 2>&1"
 :: ------------------------------------
 :loop_sfc
 cls
-echo  [1/3] DIAGNOSTIC EXPRESS   : Terminé.
-echo  [2/3] EXAMEN APPROFONDI    : Terminé.
-echo  [3/3] ANALYSE DES FICHIERS : Vérification de la structure Windows...
+echo.
+echo  [1/3] INITIALISATION   : Terminé.
+echo  [2/3] SCANNER          : Terminé.
+echo  [3/3] AUDIT            : Vérification de la signature des fichiers système...
+echo.
+echo  [i]   NOTE             : Consolidation de la base WinSxS et purge des packages obsolètes.
 echo.
 if exist "%TEMP_LOG%" (
     powershell -NoProfile -Command "$fs = New-Object System.IO.FileStream('%TEMP_LOG%', [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode); $t = $sr.ReadToEnd(); $sr.Close(); $fs.Close(); if($t){$t -replace '[\x00-\x09\x0B\x0C\x0E-\x1F]','' | Out-Host}"
