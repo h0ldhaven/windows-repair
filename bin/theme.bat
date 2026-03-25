@@ -1,4 +1,5 @@
 @echo off
+
 :: Génération du caractère d'échappement ESC (Universel Windows 10/11)
 for /F "tokens=1,2 delims=#" %%a in ('"prompt #$H#$E# & echo on & for %%b in (1) do rem"') do set "ESC=%%b"
 
@@ -66,3 +67,7 @@ if "%~1"=="--info" (
     echo %F_ORANGE%Exemple d'alerte : %ALERT_ERR% ERREUR SYSTEME %CLR_RESET%
     echo %F_PURPLE%Exemple de menu : %MENU_SELECT% ^> OPTION CHOISIE %CLR_RESET%
 )
+
+:: ==============================================================================
+::      FIN DU FICHIER THEME.BAT
+:: ==============================================================================
