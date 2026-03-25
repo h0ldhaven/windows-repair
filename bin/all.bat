@@ -2,32 +2,12 @@
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-:: Configuration des dossiers
-for %%I in ("%~dp0..") do set ROOT_DIR=%%~fI\
-set LOG_DIR=%ROOT_DIR%logs
-if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
-
-:: 1. Nom de log unique
-set DATETIME=%date:~-4%-%date:~3,2%-%date:~0,2%_%time:~0,2%-%time:~3,2%-%time:~6,2%
-set DATETIME=%DATETIME: =0%
-set FULL_LOG=%LOG_DIR%\full_repair_%DATETIME%.log
-
-:: 2. Header (Affichage console ET écriture log)
-echo ============================================================
-echo           LANCEMENT DE LA RÉPARATION COMPLÈTE
-echo ============================================================
-echo.
-
-(
-echo ============================================================
-echo           RAPPORT DE MAINTENANCE COMPLÈTE
-echo           Date : %date% %time%
-echo ============================================================
-echo.
-) > "%FULL_LOG%"
+call "%~dp0utils.bat" :INIT_LOG "full_repair"
+call "%~dp0utils.bat" :HEADER "RÉPARATION COMPLÈTE"
+call "%~dp0utils.bat" :SKIP_LINE
 
 :: 3. ÉTAPE 1 : ANALYSE
-echo [+] ÉTAPE 1 : ANALYSE EN COURS...
+echo %F_B_YELLOW%[+] ÉTAPE 1 : ANALYSE EN COURS...%CLR_RESET%
 echo [+] ÉTAPE 1 : ANALYSE >> "%FULL_LOG%"
 
 call "%~dp0analyze.bat" --nested
@@ -44,7 +24,7 @@ if defined LAST_ANALYZE (
 
 :: 4. ÉTAPE 2 : RÉPARATION
 echo.
-echo [+] ÉTAPE 2 : RÉPARATION EN COURS...
+echo %F_B_YELLOW%[+] ÉTAPE 2 : RÉPARATION EN COURS...%CLR_RESET%
 echo [+] ÉTAPE 2 : RÉPARATION >> "%FULL_LOG%"
 
 call "%~dp0repair.bat" --nested
