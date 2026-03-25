@@ -74,7 +74,13 @@ echo ============================================================
 ) >> "%FULL_LOG%"
 
 :: Fin du script
+:: On ferme la session proprement (nettoie les variables de la mémoire vive)
+endlocal
+
 echo.
-echo Opération terminée. Appuyez sur une touche pour revenir au menu.
+echo  %F_B_GREEN%[FIN] TOUTES LES OPÉRATIONS SONT TERMINÉES.%CLR_RESET%
+echo  Appuyez sur une touche pour revenir au menu.
 pause >nul
+
+:: On retourne au menu.bat
 exit /b

@@ -1,6 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
+cls
 
 :: 1. On force la console en UTF-8 pour le Batch
 chcp 65001 >nul
@@ -124,9 +125,14 @@ echo Analyse terminee.
 echo Log généré : "%LOG_FILE%"
 
 :: Fin du script
-if "%1"=="--nested" exit /b
+:: On ferme la session proprement (nettoie les variables de la mémoire vive)
+endlocal
 
+if "%1"=="--nested" exit /b
 echo.
-echo Opération terminée. Appuyez sur une touche pour revenir au menu.
+echo  %F_B_GREEN%[FIN] Opération terminée.%CLR_RESET%
+echo  Appuyez sur une touche pour revenir au menu.
 pause >nul
+
+:: On retourne au menu.bat
 exit /b

@@ -139,10 +139,15 @@ echo  UN REDEMARRAGE DU SYSTEME EST RECOMMANDÉ.
 echo  Rapport d'intervention : %LOG_FILE%
 echo  =============================================================
 
-:: Gestion workflow
-if "%1"=="--nested" exit /b
+:: Fin du script
+:: On ferme la session proprement (nettoie les variables de la mémoire vive)
+endlocal
 
+if "%1"=="--nested" exit /b
 echo.
-echo Appuyez sur une touche pour revenir au menu principal.
+echo  %F_B_GREEN%[FIN] Opération terminée.%CLR_RESET%
+echo  Appuyez sur une touche pour revenir au menu.
 pause >nul
+
+:: On retourne au menu.bat
 exit /b
