@@ -157,11 +157,31 @@ timeout /t 3 >nul
 goto MENU
 
 :CLEAN_ALL_LOGS
-cls & echo.
-echo  %FX_BOLD%%F_RED%[!] SUPPRESSION TOTALE DES LOGS EN COURS...%CLR_RESET%
-if exist "..\logs" (
-    del /q "..\logs\*.log" 2>nul
-    echo  %F_GREEN%[+] Tous les fichiers .log ont été supprimés.%CLR_RESET%
+cls
+echo.
+echo  %FX_BOLD%%F_RED% [!] PURGE DES JOURNAUX SYSTEME EN COURS... %CLR_RESET%
+echo.
+
+if exist "..\logs\*.log" (
+    :: On boucle sur chaque fichier pour donner l'effet de travail
+    for %%F in ("..\logs\*.log") do (
+        :: On affiche le nom du fichier en gris
+        <nul set /p "= %F_GRAY% [>] Suppression de : %%~nxF... %CLR_RESET%"
+        
+        :: On supprime
+        del /q "%%F" >nul 2>&1
+        
+        :: La micro-pause pour l'effet visuel (200ms)
+        ping localhost -n 1 -w 200 >nul
+        
+        :: On valide la ligne avec un check vert
+        echo %F_GREEN%[OK]%CLR_RESET%
+    )
+    echo.
+    echo  %F_B_GREEN% [+] Tous les fichiers .log ont été supprimés. %CLR_RESET%
+) else (
+    timeout /t 1 >nul
+    echo  %F_B_YELLOW% [!] Aucun log trouvé dans le dossier. %CLR_RESET%
 )
 timeout /t 2 >nul
 goto MENU
@@ -180,13 +200,47 @@ goto MENU
 
 :CLEAN_REGISTRY_SAVES
 cls
-echo.
-echo  %FX_BOLD%%F_RED%[!] SUPPRESSION TOTALE DES SAVES REGISTRES EN COURS...%CLR_RESET%
-if exist "..\reg" (
-    del /q "..\reg\*.reg" 2>nul
-    echo  %F_GREEN%[+] Tous les fichiers .reg ont été supprimés.%CLR_RESET%
+call "utils.bat" :HEADER "MAINTENANCE : PURGE DES BACKUPS"
+
+:: 1. Vérification rapide
+if not exist "..\reg\*.reg" (
+    echo.
+    echo  %F_B_YELLOW% [i] INFO : Aucun fichier .reg a supprimer.%CLR_RESET%
+    timeout /t 2 >nul
+    goto MENU
 )
-timeout /t 2 >nul
+
+:: 2. Comptage initial pour la progression
+set /a totalFiles=0
+for %%F in ("..\reg\*.reg") do set /a totalFiles+=1
+
+echo  %FX_BOLD%%F_RED% [!] ATTENTION : Suppression de !totalFiles! sauvegarde(s)...%CLR_RESET%
+echo.
+
+:: 3. Boucle de suppression avec Barre de Progression Dynamique
+set /a current=0
+for %%F in ("..\reg\*.reg") do (
+    set /a current+=1
+    set /a percent=current * 100 / totalFiles
+    
+    :: Effacement de la ligne précédente et affichage de la progression
+    :: On utilise <nul set /p pour rester sur la même ligne
+    <nul set /p "= %F_GRAY% [!percent!%%] Nettoyage : %%~nxF... %CLR_RESET%"
+    
+    del "%%F" /q >nul 2>&1
+    
+    :: Petite pause pour l'effet visuel (ajustable)
+    ping localhost -n 1 -w 200 >nul
+    
+    :: Retour à la ligne pour le prochain fichier
+    echo.
+)
+
+:: 4. Conclusion
+echo.
+echo  %F_B_GREEN% [+] TERMINÉ : La base de données des backups est vide. %CLR_RESET%
+echo  %F_GRAY% Retour au menu dans 3 secondes... %CLR_RESET%
+timeout /t 3 >nul
 goto MENU
 
 :EXIT_MENU
