@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -17,7 +20,7 @@ jobs:
         shell: pwsh
         run: |
           # Correction : On vérifie les fichiers EXACTS de ton projet
-          $files = @("RepairLauncher.vbs", "bin/menu.bat", "bin/repair.bat", "bin/analyze.bat", "bin/all.bat")
+          $files = @("Windows-Tool.vbs", "bin/menu.bat", "bin/repair.bat", "bin/analyze.bat", "bin/all.bat")
           foreach ($f in $files) {
             if (-not (Test-Path $f)) { 
                 Write-Error "ERREUR : Fichier manquant dans le dépôt : $f"
@@ -29,19 +32,22 @@ jobs:
       - name: Create Archive
         shell: pwsh
         run: |
-          # 1. Création d'un dossier temporaire pour packager proprement
-          New-Item -ItemType Directory -Path "RepairTool_Package"
+          # 1. Définition du dossier final
+          $ReleaseFolder = "RepairTool_${{ github.ref_name }}"
           
-          # 2. Copie du lanceur et du dossier bin
-          Copy-Item "RepairLauncher.vbs" -Destination "RepairTool_Package/"
-          Copy-Item -Path "bin" -Destination "RepairTool_Package/bin" -Recurse
+          # 2. Création de la structure
+          New-Item -ItemType Directory -Path "$ReleaseFolder"
           
-          # 3. Suppression des fichiers temporaires de log s'ils existent (nettoyage avant zip)
-          Remove-Item -Path "RepairTool_Package/bin/*.tmp" -ErrorAction SilentlyContinue
+          # 3. Copie des fichiers dans ce dossier spécifique
+          Copy-Item "Windows-Tool.vbs" -Destination "$ReleaseFolder/"
+          Copy-Item -Path "bin" -Destination "$ReleaseFolder/bin" -Recurse
           
-          # 4. Compression du contenu du dossier
-          # Note : On zippe le CONTENU pour que l'utilisateur n'ait pas de sous-dossier inutile
-          Compress-Archive -Path "RepairTool_Package/*" -DestinationPath "RepairTool_${{ github.ref_name }}.zip"
+          # 4. Nettoyage des fichiers temporaires
+          Remove-Item -Path "$ReleaseFolder/bin/*.tmp" -ErrorAction SilentlyContinue
+          
+          # 5. COMPRESSION DU DOSSIER (On enlève le /* pour que le dossier soit inclus)
+          $ZipName = "RepairTool_${{ github.ref_name }}.zip"
+          Compress-Archive -Path "$ReleaseFolder" -DestinationPath "$ZipName"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

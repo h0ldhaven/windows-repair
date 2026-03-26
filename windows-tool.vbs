@@ -9,4 +9,4 @@ If Not fso.FileExists(batPath) Then
     WScript.Quit
 End If
 
-shell.ShellExecute "cmd.exe", "/k """ & batPath & """", currentDir, "runas", 1
+shell.ShellExecute "cmd.exe", "/c """ & batPath & """", currentDir, "runas", 1
