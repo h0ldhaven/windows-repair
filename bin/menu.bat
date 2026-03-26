@@ -144,14 +144,39 @@ if exist "..\logs" (
 goto MENU
 
 :CLEAN_OLD
-cls & echo.
-echo %F_YELLOW%[i] Nettoyage des logs de plus de 7 jours...%CLR_RESET%
+cls
+echo.
+echo  %FX_BOLD%[i] ANALYSE DES ARCHIVES EN COURS...%CLR_RESET%
+echo.
+
 if exist "..\logs" (
-    :: Forfiles cherche les fichiers .log de plus de 7 jours et les supprime
-    forfiles /p "..\logs" /m *.log /d -7 /c "cmd /c del /q @path" 2>nul
-    echo  %F_GREEN%[+] Nettoyage terminé.%CLR_RESET%
+    :: On vérifie d'abord s'il y a des fichiers de + de 7 jours pour éviter un message vide
+    forfiles /p "..\logs" /m *.log /d -7 >nul 2>&1
+    if !errorlevel! neq 0 (
+        timeout /t 1 >nul
+        echo  %F_B_YELLOW% [i] INFO : Aucun log de plus de 7 jours trouve. %CLR_RESET%
+        timeout /t 1 >nul
+        echo  %F_B_YELLOW% [i] INFO : Retour au menu principal.. %CLR_RESET%
+        timeout /t 2 >nul
+        goto MENU
+    )
+
+    :: Si on en trouve, on les traite un par un avec l'effet visuel
+    for /f "delims=" %%F in ('forfiles /p "..\logs" /m *.log /d -7 /c "cmd /c echo @file"') do (
+        <nul set /p "= %F_GRAY% [>] Archivage / Suppression : %%~F... %CLR_RESET%"
+        
+        :: On supprime le fichier trouvé par forfiles
+        del /q "..\logs\%%~F" >nul 2>&1
+        
+        :: La micro-pause "Pro"
+        ping localhost -n 1 -w 250 >nul
+        echo %F_GREEN%[PURGÉ]%CLR_RESET%
+    )
+    
+    echo.
+    echo  %F_B_GREEN% [+] Nettoyage des archives termine avec succes. %CLR_RESET%
 ) else (
-    echo  %F_RED%[-] Dossier logs introuvable.%CLR_RESET%
+    echo  %F_B_RED% [-] ERREUR : Le dossier logs est introuvable. %CLR_RESET%
 )
 timeout /t 3 >nul
 goto MENU
@@ -181,7 +206,7 @@ if exist "..\logs\*.log" (
     echo  %F_B_GREEN% [+] Tous les fichiers .log ont été supprimés. %CLR_RESET%
 ) else (
     timeout /t 1 >nul
-    echo  %F_B_YELLOW% [!] Aucun log trouvé dans le dossier. %CLR_RESET%
+    echo  %F_B_YELLOW% [-] Aucun log trouvé dans le dossier. %CLR_RESET%
 )
 timeout /t 2 >nul
 goto MENU
@@ -200,8 +225,6 @@ goto MENU
 
 :CLEAN_REGISTRY_SAVES
 cls
-call "utils.bat" :HEADER "MAINTENANCE : PURGE DES BACKUPS"
-
 :: 1. Vérification rapide
 if not exist "..\reg\*.reg" (
     echo.
