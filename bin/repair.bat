@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 :: Initialisation du SCRIPT
-call "%~dp0utils.bat" :INIT_LOG "analyze"
+call "%~dp0utils.bat" :INIT_LOG "repair"
 call "%~dp0utils.bat" :HEADER "ANALYSE SYSTÈME SEULE"
 call "%~dp0utils.bat" :SKIP_LINE
 set TEMP_LOG=%TEMP%\repair_temp.txt
